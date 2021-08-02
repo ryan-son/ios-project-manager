@@ -43,6 +43,7 @@ final class PMViewController: UIViewController {
         setSubView()
 
         bindWithViewModel()
+        fetchTasks()
     }
 
     // MARK: Configure View
@@ -158,16 +159,16 @@ extension PMViewController: UITableViewDataSource {
         return taskCell
     }
 
-    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-
-    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
-        guard let stateTableView = tableView as? StateTableView,
-              let state = stateTableView.state else { return }
-
-        viewModel.move(in: state, from: sourceIndexPath.row, to: destinationIndexPath.row)
-    }
+//    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+//        return true
+//    }
+//
+//    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+//        guard let stateTableView = tableView as? StateTableView,
+//              let state = stateTableView.state else { return }
+//
+//        viewModel.move(in: state, from: sourceIndexPath.row, to: destinationIndexPath.row)
+//    }
 }
 
 // MARK: - UITableViewDelegate

@@ -84,8 +84,7 @@ struct TaskViewModel {
      - Parameter destinationIndex: 이동할 상태 내 task의 index
      */
     mutating func move(_ task: Task, to destinationState: Task.State, at destinationIndex: Int) {
-        guard task.state != destinationState,
-              destinationIndex <= taskList[destinationState].count else { return }
+        guard destinationIndex <= taskList[destinationState].count else { return }
 
         if let removedTask: Task = remove(task) {
             insert(removedTask, to: destinationState, at: destinationIndex)
