@@ -40,8 +40,8 @@ extension PMViewController: UITableViewDropDelegate {
             let sourceState = task.taskState
             self?.viewModel.move(task, to: destinationState, at: destinationIndexPath.row)
             self?.historyViewModel.create(history: History(method: .moved(title: task.title,
-                                                             sourceState: sourceState,
-                                                             desinationState: task.taskState)))
+                                                                          sourceState: sourceState,
+                                                                          destinationState: task.taskState)))
         }
     }
 }
