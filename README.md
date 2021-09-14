@@ -5,22 +5,17 @@
 # Table of Contents
 
 - [1. 프로젝트 개요](#1-프로젝트-개요)
-
   + [페어 프로그래밍](#페어-프로그래밍)
-
-  - [MVVM](#mvvm)
-  - [코드를 통한 레이아웃 구성](#코드를-통한-레이아웃-구성)
-  - [적용된 기술 스택 일람](#적용된-기술-스택-일람)
-
+  + [MVVM](#mvvm)
+  + [코드를 통한 레이아웃 구성](#코드를-통한-레이아웃-구성)
+  + [적용된 기술 스택 일람](#적용된-기술-스택-일람)
 - [2. 기능](#2-기능)
-
 - [3. 설계 및 구현](#3-설계-및-구현)
-
 - [4. 테스트](#4-테스트)
-
   + [네트워크에 의존하지 않는 테스트 구현](#네트워크에-의존하지-않는-테스트-구현)
-
 - [5. Trouble shooting](#5-trouble-shooting)
+  + [동일 TableView 내에서 Drag and Drop이 되지 않는 문제](#동일-tableview-내에서-drag-and-drop이-되지-않는-문제)
+  + [Core data 모델 인스턴스 삭제 시 접근이 불가능한 문제](#core-data-모델-인스턴스-삭제-시-접근이-불가능한-문제)
 
 ---
 
@@ -1082,8 +1077,6 @@ func test_post에task를전달하면_전달한task를서버DB에저장할수있�
 
 본래 `UITableViewDragDelegate`와 `UITableViewDropDelegate`를 통해 충분히 동일 tableView 내, 타 tableView 간 Drag and Drop 기능을 구현할 수 있지만, 이 문제는 `PMViewController`와 `TaskViewModel` 간 MVVM 아키텍처를 구성하며 데이터 바인딩 방식의 특성으로 인해 발생하였습니다.
 
-
-
 현재 `ViewModel`과 `View` 간 적용하고 있는 바인딩 방식은 `ViewModel` 측에 Task 추가, 수정, 이동, 삭제와 같은 변경에 따라 View 단에서 실행할 코드블럭을 주입해주기 위해 `ViewModel`에서 아래와 같은 클로저를 제공합니다.
 
 ```swift
@@ -1166,15 +1159,11 @@ private func bindWithViewModel() {
 5. tableView는 `deleteRows(at:with:)` 가 실행되어 cell의 개수는 감소했지만 ViewModel에 위치한 task들의 수량을 변경되지 않은 것을 확인함
 6. tableView의 NumberOfRows와 모델의 개수가 다릅니다! Runtime Error!
 
-
-
 결국 데이터 바인딩 과정에서 모델과 View의 동기화 시점이 달라 발생한 문제라고 결론지을 수 있으며, 이는 아래 세 가지 방법으로 해결할 수 있었습니다.
 
 1. 데이터 바인딩 방식을 단순화하여 `task` 추가, 수정, 상태 변경, 삭제가 수행될 때 모든 tableView를 `reloadData()` 시키는 방법 (데이터 변경에 따른 view binding 단순화)
 2. 데이터와  View 간 하나의 클로저로 바인딩하는 `move` 메서드를 새로 만드는 방법
 3. 동일 tableView 내에서 일어나는 순서 변경을 지원하는  `UITableViewDataSource` 메서드를 구현하고 이에 적합한 `move` 메서드를 추가하는 방법
-
-
 
 저와 동료는 각 항목에 대해 아래와 같이 고려하여 3 번 방식으로 구현하기로 결정하였습니다.
 
@@ -1184,8 +1173,6 @@ private func bindWithViewModel() {
    -  합리적이지만, 이미 바인딩을 위한 클로저가 많이 작성되어 있는 상황에서 추가하기는 부담스러움
 3. `UITableViewDataSource` 메서드 구현 및 적절한 `move` 메서드 추가
    - 전용 API로 예상한 기능에 대해 안정적인 작동을 보장하며 데이터 바인딩을 위한 클로저를 추가하지 않아도 됨
-
-
 
 구현 방식은 아래와 같습니다.
 
@@ -1226,19 +1213,11 @@ func move(in state: Task.State, from sourceIndex: Int, to destinationIndex: Int)
 ```
 
 
-
-
-
-
 ## Core data 모델 인스턴스 삭제 시 접근이 불가능한 문제
 
 `CoreData`의 Entity는 Reference semantics를 따르는 `class` 타입으로 지정되어 있습니다. Reference semantics 값들의 특징은 값이 전달될 때 복사가 일어나지 않고 identity가 전달되기 때문에 수정 작업을 하면 그 내용이 모든 곳에서 공유된다는 점입니다.
 
-
-
 이러한 점이 이번 프로젝트에서 특히 치명적이었던 부분은 '요소를 디스크에서 삭제하면 더 이상 해당 요소에 접근할 수 없다'는 점이었습니다. 디스크에서 삭제하더라도 해당 요소를 가지고 다른 메서드에 넘겨주거나 네트워크 작업을 수행하는 등 더 해야하는 작업이 남아있어 굉장히 불편했습니다.
-
-
 
 이 문제를 해결하기 위해 저와 동료는 **Soft delete**라는 개념을 적용하여 사용하였습니다. 모델 타입에 `isDeleted`라는 Bool 타입 프로퍼티를 만들어 실제로 삭제되지 않았지만 `fetch`와 같은 작업 결과에는 포함되지 않도록 구성하고, 모든 작업이 완료된 후 네트워크로부터 삭제 요청에 대해 성공 응답을 수신하면 실제로 디스크에서 삭제하는 방식을 적용하였습니다.
 
