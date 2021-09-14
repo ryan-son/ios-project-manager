@@ -491,7 +491,7 @@ func post(task: Task, completion: @escaping (Result<ResponseTask, PMError>) -> V
 
 `CoreData`의 데이터 모델에는 아래 그림과 같이 `Task` 모델타입과 `PendingTaskList`가 Entity로 정의되어 있습니다.  이들은 relationship으로 연결되어 있고, `PendingTaskList`는 이름에 걸맞게 `Task`의 배열을 가지도록 설계되어 있습니다. 
 
-<img width="400" alt="image" src="https://user-images.githubusercontent.com/69730931/133314450-b1fd94f2-db91-4c58-8ddf-e7056bd4e3e5.png">  <img width="400" alt="image" src="https://user-images.githubusercontent.com/69730931/133314491-1022ead2-133d-44d7-8bb4-1db4cc2ea2f2.png">
+<img width="500" alt="image" src="https://user-images.githubusercontent.com/69730931/133314450-b1fd94f2-db91-4c58-8ddf-e7056bd4e3e5.png">  <img width="500" alt="image" src="https://user-images.githubusercontent.com/69730931/133314491-1022ead2-133d-44d7-8bb4-1db4cc2ea2f2.png">
 
 `PendingTaskList`는 `NetworkRepository`를 통해 서버에 `POST`, `PATCH`, `DELETE` 요청을 보냈지만 네트워킹에 실패한다면 아직 반영되지 못한 변경사항이라는 의미에서 해당 `task`를 `PendingTaskList`에 추가합니다. 
 
@@ -1032,13 +1032,249 @@ var isExpired: Bool? {
 
 # 4. 테스트
 
+제가 테스트를 하는 이유는 [여기](https://github.com/ryan-son/wrap-up-ios-open-market#필자가-테스트를-하는-이유)에서 살펴보실 수 있습니다.
+
+`XCTest` 프레임워크를 이용하여 핵심 로직을 가진 7 개 타입 대상으로 49 개 유닛 테스트를 수행하였으며  View 영역의 코드를 제외한 Code Coverage는 63.3%입니다.
+
+<img width="600" alt="image" src="https://user-images.githubusercontent.com/69730931/133331505-bdc31f56-218f-4fe7-b530-e78160157317.png">
+
 ## 네트워크에 의존하지 않는 테스트 구현
+
+`URLSession`에 의존하여 네트워킹 기능을 구현한 앱들은 커스텀 `URLProtocol`을 정의하여 의도적인 응답을 설정할 수 있게 만들어 네트워크 연결 여부와 무관하게 유닛 테스트를 수행할 수 있도록 하고 있습니다. 이 개념은 [Ryan Market](https://github.com/ryan-son/wrap-up-ios-open-market) 프로젝트에서도 적용되었습니다.
+
+ 이 방식은 [WWDC18 - Testing tips & tricks](https://developer.apple.com/videos/play/wwdc2018/417/)에서 소개된 방식으로 Request를 처리하는 `URLSessionConfiguration`의 프로퍼티인 `protocolClasses`에 커스텀 프로토콜을 주입함으로써 의도된 방식으로 request에 응답하는 `URLSessionConfiguration`을 만들고, 이를 `URLSession(configuration:)` 이니셜라이저를 통해 주입함으로써 구현합니다.
+
+본 프로젝트에서 정의하여 사용한 [MockURLProtocol](https://github.com/ryan-son/ios-project-manager/blob/main/ProjectManager/ProjectManagerTests/Sources/Mocks/MockURLProtocol.swift)과 이를 이용한 [유닛 테스트](https://github.com/ryan-son/ios-project-manager/blob/main/ProjectManager/ProjectManagerTests/Sources/Tests/Repositories/NetworkRepositoryTests.swift)는 각 링크를 통해 확인하실 수 있습니다.
+
+```swift
+// 테스트 예시
+func test_post에task를전달하면_전달한task를서버DB에저장할수있다() throws {
+    let task = Task(context: coreDataRepository.coreDataStack.context,
+                    responseTask: TestAsset.dummyTodoResponseTask)
+    let postTask = PostTask(by: task)
+    let expectedHTTPBodyResponse = try JSONEncoder().encode(postTask)
+
+    setLoadingHandler(true, expectedHTTPBodyResponse)
+    
+    let expectation = XCTestExpectation(description: "Post test")
+    sutNetworkRepository.post(task: task) { result in
+        switch result {
+        case .success(let responseTask):
+            XCTAssertEqual(responseTask.id, TestAsset.dummyTodoResponseTask.id)
+            XCTAssertEqual(responseTask.title, TestAsset.dummyTodoResponseTask.title)
+            XCTAssertEqual(responseTask.body, TestAsset.dummyTodoResponseTask.body)
+            XCTAssertEqual(responseTask.dueDate, TestAsset.dummyTodoResponseTask.dueDate)
+            XCTAssertEqual(responseTask.state, TestAsset.dummyTodoResponseTask.state)
+            expectation.fulfill()
+        case .failure(let error):
+            XCTFail("Post에 실패하였습니다. \(error)")
+        }
+    }
+    wait(for: [expectation], timeout: 2)
+}
+```
+
+
 
 # 5. Trouble shooting
 
 ## 동일 TableView 내에서 Drag and Drop이 되지 않는 문제
 
+본래 `UITableViewDragDelegate`와 `UITableViewDropDelegate`를 통해 충분히 동일 tableView 내, 타 tableView 간 Drag and Drop 기능을 구현할 수 있지만, 이 문제는 `PMViewController`와 `TaskViewModel` 간 MVVM 아키텍처를 구성하며 데이터 바인딩 방식의 특성으로 인해 발생하였습니다.
+
+
+
+현재 `ViewModel`과 `View` 간 적용하고 있는 바인딩 방식은 `ViewModel` 측에 Task 추가, 수정, 이동, 삭제와 같은 변경에 따라 View 단에서 실행할 코드블럭을 주입해주기 위해 `ViewModel`에서 아래와 같은 클로저를 제공합니다.
+
+```swift
+final class TaskViewModel {
+
+    var added: ((_ index: Int) -> Void)?
+    var changed: (() -> Void)?
+    var inserted: ((_ state: Task.State, _ index: Int) -> Void)?
+    var removed: ((_ state: Task.State, _ index: Int) -> Void)?
+    var fetchingFinished: (() -> Void)?
+}
+```
+
+그러면 View 단에서는 아래와 같은 방식으로 상황별 View를 업데이트 하는 로직을 바인딩합니다.
+
+```swift
+// Mark: - PMViewController
+
+private func bindWithViewModel() {
+    viewModel.added = { index in
+        DispatchQueue.main.async { [weak self] in
+            let indexPaths = [IndexPath(row: index, section: .zero)]
+            let todoStackView = self?.stateStackViews.filter { $0.state == .todo }.first
+            todoStackView?.stateTableView.insertRows(at: indexPaths, with: .none)
+        }
+    }
+
+    viewModel.changed = {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            if self.isFirstLoad {
+                self.stateStackViews.forEach { stateStackView in
+                    stateStackView.showTaskCountLabel()
+                    stateStackView.stateTableView.reloadSections(IndexSet(0...0), with: .automatic)
+                }
+                self.isFirstLoad.toggle()
+            }
+
+            self.stateStackViews.forEach {
+                guard let state = $0.state else { return }
+
+                let taskCount = self.viewModel.count(of: state)
+                $0.setTaskCountLabel(as: taskCount)
+            }
+        }
+    }
+
+    viewModel.removed = { state, row in
+        let indexPaths = [IndexPath(row: row, section: .zero)]
+        DispatchQueue.main.async { [weak self] in
+            let stackView = self?.stateStackViews.filter { $0.state == state }.first
+            stackView?.stateTableView.deleteRows(at: indexPaths, with: .none)
+        }
+    }
+
+    viewModel.inserted = { state, row in
+        let indexPaths = [IndexPath(row: row, section: .zero)]
+        DispatchQueue.main.async { [weak self] in
+            let stackView = self?.stateStackViews.filter { $0.state == state }.first
+            stackView?.stateTableView.insertRows(at: indexPaths, with: .none)
+        }
+    }
+
+    viewModel.fetchingFinished = {
+        DispatchQueue.main.async { [weak self] in
+            self?.stateStackViews.forEach { $0.stateTableView.reloadSections(IndexSet(0...0), with: .automatic) }
+            self?.hideActivityIndicatorView()
+        }
+    }
+}
+```
+
+ 이러한 배경을 이해한 후 문제가 되었던 '동일 tableView 내 task 이동'이라는 이벤트를 발생시키면 아래와 같이 작업이 수행됩니다.
+
+1. 동일 tableView 내 drag and drop
+2. `PMViewController` → `taskViewModel.move(task, to: {sameAsBefore}, at: {destinationIndex})`
+3. `move` 메서드는 `remove` → `insert` 메서드로의 조합으로 구성되어 있으며, 각 메서드의 말미에서  View 업데이트를 위해 지정된 클로저 (`removed?(state, index)`, `inserted?(state, index)`)가 실행됨
+4. 동일 tableView 내에서 요소 이동이 일어났지만 `move` 메서드 실행 중 `remove`가 먼저 실행됨에 따라 View 단에서 `deleteRows(at:with:)`가 실행됨
+5. tableView는 `deleteRows(at:with:)` 가 실행되어 cell의 개수는 감소했지만 ViewModel에 위치한 task들의 수량을 변경되지 않은 것을 확인함
+6. tableView의 NumberOfRows와 모델의 개수가 다릅니다! Runtime Error!
+
+
+
+결국 데이터 바인딩 과정에서 모델과 View의 동기화 시점이 달라 발생한 문제라고 결론지을 수 있으며, 이는 아래 세 가지 방법으로 해결할 수 있었습니다.
+
+1. 데이터 바인딩 방식을 단순화하여 `task` 추가, 수정, 상태 변경, 삭제가 수행될 때 모든 tableView를 `reloadData()` 시키는 방법 (데이터 변경에 따른 view binding 단순화)
+2. 데이터와  View 간 하나의 클로저로 바인딩하는 `move` 메서드를 새로 만드는 방법
+3. 동일 tableView 내에서 일어나는 순서 변경을 지원하는  `UITableViewDataSource` 메서드를 구현하고 이에 적합한 `move` 메서드를 추가하는 방법
+
+
+
+저와 동료는 각 항목에 대해 아래와 같이 고려하여 3 번 방식으로 구현하기로 결정하였습니다.
+
+1. `reloadData()`
+   - 아무리 개별 데이터의 크기와 총 규모가 작다고 해도 관련 없는 tableView까지 `reloadData()`를 수행하는 것은 비용이 크며 합리적이지 않음. 추후 개별 데이터가 커지거나 (이미지 포함) 총 규모가 커지면 (개수 증가) 다시 원상 복귀하여 이 문제에 직면하게 될 가능성이 있음)
+2. 신규 `move` 메서드 및 신규 바인딩 클로저 추가
+   -  합리적이지만, 이미 바인딩을 위한 클로저가 많이 작성되어 있는 상황에서 추가하기는 부담스러움
+3. `UITableViewDataSource` 메서드 구현 및 적절한 `move` 메서드 추가
+   - 전용 API로 예상한 기능에 대해 안정적인 작동을 보장하며 데이터 바인딩을 위한 클로저를 추가하지 않아도 됨
+
+
+
+구현 방식은 아래와 같습니다.
+
+```swift
+// MARK: - UITableViewDataSource
+
+extension PMViewController: UITableViewDataSource {
+
+    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+
+    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+        guard let stateTableView = tableView as? StateTableView,
+              let state = stateTableView.state else { return }
+
+        viewModel.move(in: state, from: sourceIndexPath.row, to: destinationIndexPath.row)
+    }
+}
+
+// Mark: - TaskViewModel
+
+/**
+지정한 위치의 Task를 같은 state의 해당하는 index로 이동시킨다.
+
+- Parameter state: 이동할 task
+- Parameter sourceIndex: task의 기존 index
+- Parameter destinationIndex: task의 이동 후 index
+*/
+func move(in state: Task.State, from sourceIndex: Int, to destinationIndex: Int) {
+    let tasks: [Task] = taskList[state]
+    guard sourceIndex < tasks.count,
+          destinationIndex < tasks.count else { return }
+
+    let removedTask: Task = taskList[state].remove(at: sourceIndex)
+    taskList[state].insert(removedTask, at: destinationIndex)
+}
+```
+
+
+
+
+
 
 ## Core data 모델 인스턴스 삭제 시 접근이 불가능한 문제
 
-soft delete
+`CoreData`의 Entity는 Reference semantics를 따르는 `class` 타입으로 지정되어 있습니다. Reference semantics 값들의 특징은 값이 전달될 때 복사가 일어나지 않고 identity가 전달되기 때문에 수정 작업을 하면 그 내용이 모든 곳에서 공유된다는 점입니다.
+
+
+
+이러한 점이 이번 프로젝트에서 특히 치명적이었던 부분은 '요소를 디스크에서 삭제하면 더 이상 해당 요소에 접근할 수 없다'는 점이었습니다. 디스크에서 삭제하더라도 해당 요소를 가지고 다른 메서드에 넘겨주거나 네트워크 작업을 수행하는 등 더 해야하는 작업이 남아있어 굉장히 불편했습니다.
+
+
+
+이 문제를 해결하기 위해 저와 동료는 **Soft delete**라는 개념을 적용하여 사용하였습니다. 모델 타입에 `isDeleted`라는 Bool 타입 프로퍼티를 만들어 실제로 삭제되지 않았지만 `fetch`와 같은 작업 결과에는 포함되지 않도록 구성하고, 모든 작업이 완료된 후 네트워크로부터 삭제 요청에 대해 성공 응답을 수신하면 실제로 디스크에서 삭제하는 방식을 적용하였습니다.
+
+```swift
+// MARK: - TaskViewModel
+
+/**
+ 지정한 위치의 Task를 삭제하고 이를 반환한다.
+
+ - Parameter state: 삭제할 task가 위치한 상태
+ - Parameter index: 삭제할 task의 상태 내 index
+ */
+@discardableResult
+func remove(state: Task.State, at index: Int) -> String? {
+    guard index < taskList[state].count else { return nil }
+
+    let removedTitle: String = taskList[state][index].title
+    let removedTask: Task = taskList[state].remove(at: index)
+    coreDataRepository.softDelete(removedTask.objectID) // soft delete 수행
+    removed?(state, index)
+    delete(removedTask)
+    return removedTitle
+}
+
+private func delete(_ removedTask: Task) {
+    networkRepository.delete(task: removedTask) { [weak self] result in
+        switch result {
+        case .success(let id):
+            self?.coreDataRepository.delete(removedTask.objectID) // 실제 delete 작업
+            self?.coreDataRepository.deleteFromPendingTaskList(removedTask)
+            print("Deletion succeed! ID: \(id)")
+        case .failure(let error):
+            self?.coreDataRepository.insertFromPendingTaskList(removedTask)
+            print(error)
+        }
+    }
+}
+```
+
