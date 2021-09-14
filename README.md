@@ -15,7 +15,9 @@
 - [5. Trouble shooting](#5-trouble-shooting)
 
 ---
+
 <img src="https://user-images.githubusercontent.com/69730931/133176854-690ca2bc-6a01-4568-81d6-2045e0fe6baf.gif" alt="marketItemListView" width="600"/>
+
 <img src="https://user-images.githubusercontent.com/69730931/133178833-f53cf030-0285-4e99-931f-1e45497b37c8.gif" alt="marketItemListView" width="600"/>
 
 ---
@@ -44,14 +46,21 @@
 # 2. 기능
 
 ## [Drag and Drop을 통한 프로젝트 상태 변경 (구현 방식 바로가기)](#drag-and-drop을-통한-프로젝트-상태-변경-기능으로-돌아가기)
+Drag and Drop 동작으로 등록한 프로젝트를의 상태를 변경할 수 있습니다.
 
+![ezgif com-rotate](https://user-images.githubusercontent.com/69730931/133181057-17b92f09-b576-4bb9-9dfc-9b710eedb6ee.gif)
 
 
 ## [REST API를 통해 원격 환경에 프로젝트 실시간 반영 (구현 방식 바로가기)](#rest-api를-통해-원격-환경에-프로젝트-실시간-반영-기능으로-돌아가기)
+네트워크가 가용한 환경에서 수행한 프로젝트 생성, 수정, 삭제 작업이 서버 DB에 즉시 반영됩니다.
 
- 
+<img width="325" alt="image" src="https://user-images.githubusercontent.com/69730931/133181697-949aa818-bea6-4b00-8df0-95ba6817a0b0.png">
 
-## [재설치 시 REST API를 통해 기존 데이터 불러오기 (구현 방식 바로가기)](#재설치-시-rest-api를-통해-기존-데이터-불러오기-구현-기능으로-돌아가기)
+
+## [재설치 시 REST API를 통해 기존 데이터 불러오기 (구현 방식 바로가기)](#재설치-시-rest-api를-통해-기존-데이터-불러오기-기능으로-돌아가기)
+서버 DB에 저장된 기존 프로젝트가 있을 경우 로컬에 불러와 디스크에 저장합니다.
+
+![ezgif com-rotate-2](https://user-images.githubusercontent.com/69730931/133182262-dac8df61-c293-4cf7-aaf4-11612b7660c9.gif)
 
 
 
@@ -83,12 +92,11 @@
 
 
 
-## ## [프로젝트 수정 (구현 방식 돌아가기)](#프로젝트-수정-기능으로-돌아가기)
+## [프로젝트 수정 (구현 방식 바로가기)](#프로젝트-수정-기능으로-돌아가기)
 
 
 
 ## [Swipe action을 통한 프로젝트 삭제 (구현 방식 바로가기)](#swipe-action을-통한-프로젝트-삭제-기능으로-돌아가기)
-
 
 
 ## [작업 이력 보기 (구현 방식 바로가기)](#작업-이력-보기-기능으로-돌아가기)
@@ -149,7 +157,7 @@
 
 
 
-## [Swipe action을 통한 삭제 (기능으로 돌아가기)](#swipe-action을-통한-삭제-구현-방식-바로가기)
+## [Swipe action을 통한 프로젝트 삭제 (기능으로 돌아가기)](#swipe-action을-통한-프로젝트-삭제-구현-방식-바로가기)
 
 
 
@@ -157,12 +165,11 @@
 
 
 
-## [기한이 지난 프로젝트 강조 (기능으로 돌아가기)](#기한이-지난-프로젝트-강조-구현-방식-바로가기)
-
-
-
 ## [지역에 따른 날짜 표현 방식 변경 (기능으로 돌아가기)](#지역에-따른-날짜-표현-방식-변경-구현-방식-바로가기)
 
+
+
+## [기한이 지난 프로젝트 강조 (기능으로 돌아가기)](#기한이-지난-프로젝트-강조-구현-방식-바로가기)
 
 
 ## 동적 TableView Cell 높이 구현
