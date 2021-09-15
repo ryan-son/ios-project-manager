@@ -34,5 +34,5 @@ enum TestAsset {
 
     static let dummyRemovedHistory = History(method: .removed(title: "난 삭제돼요", sourceState: .done))
 
-    static let dummyMovedHistory = History(method: .moved(title: "난 움직여요", sourceState: .todo, desinationState: .doing))
+    static let dummyMovedHistory = History(method: .moved(title: "난 움직여요", sourceState: .todo, destinationState: .doing))
 }

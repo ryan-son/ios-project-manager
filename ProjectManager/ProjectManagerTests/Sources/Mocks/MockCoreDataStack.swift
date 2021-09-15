@@ -8,7 +8,7 @@
 import CoreData
 @testable import ProjectManager
 
-struct MockCoreDataStack: CoreDataStackProtocol {
+final class MockCoreDataStack: CoreDataStackProtocol {
 
     static let persistentContainerName = "ProjectManager"
 
@@ -34,7 +34,7 @@ struct MockCoreDataStack: CoreDataStackProtocol {
         context = persistentContainer.viewContext
     }
 
-    mutating func saveContext() {
+    func saveContext() {
         if persistentContainer.viewContext.hasChanges {
             do {
                 try persistentContainer.viewContext.save()
@@ -45,7 +45,7 @@ struct MockCoreDataStack: CoreDataStackProtocol {
         }
     }
 
-    mutating func fetchTasks() -> [Task] {
+    func fetchTasks() -> [Task] {
         let fetchRequest = NSFetchRequest<Task>(entityName: Task.entityName)
 
         do {
@@ -57,7 +57,7 @@ struct MockCoreDataStack: CoreDataStackProtocol {
         }
     }
 
-    mutating func fetchPendingTaskList() -> [PendingTaskList] {
+    func fetchPendingTaskList() -> [PendingTaskList] {
         let fetchRequest = NSFetchRequest<PendingTaskList>(entityName: PendingTaskList.entityName)
 
         do {
